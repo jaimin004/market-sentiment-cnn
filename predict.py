@@ -96,9 +96,9 @@ def predict_sentiment_with_models(
         pred = torch.argmax(logits, dim=1).item()
 
         label_map = {
-            0: "Positive",
+            2: "Positive",
             1: "Neutral",
-            2: "Negative"          
+            0: "Negative"          
         }
 
         return label_map[pred], extracted_text
