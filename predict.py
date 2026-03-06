@@ -6,30 +6,29 @@ from transformers import AutoTokenizer, AutoModel
 import torch.nn as nn
 from pathlib import Path
 
-# -------------------- DEVICE --------------------
-DEVICE = "cpu"  # Always CPU for Streamlit
+#  DEVICE 
+DEVICE = "cpu" 
 
-# -------------------- PROJECT ROOT --------------------
+#  PROJECT ROOT 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "finbert_text_sentiment_model.pt"
 
-# -------------------- IMPORT VISUAL MODEL --------------------
+#  IMPORT VISUAL MODEL 
 from src.MobileNetV2.visual_features import MobileNetV2FeatureExtractor
 
-# -------------------- IMAGE TRANSFORM --------------------
+#  IMAGE TRANSFORM 
 img_transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
 ])
 
-# -------------------- LOAD MODELS --------------------
+#  LOAD MODELS 
 def load_models():
 
     # Load FinBERT directly
     tokenizer = AutoTokenizer.from_pretrained("ProsusAI/finbert")
     finbert = AutoModel.from_pretrained("ProsusAI/finbert").to(DEVICE)
 
-    # TEXT-ONLY CLASSIFIER (768 → 3)
     class SentimentClassifier(nn.Module):
         def __init__(self):
             super().__init__()
@@ -40,7 +39,6 @@ def load_models():
 
     classifier = SentimentClassifier().to(DEVICE)
 
-    # Load ONLY classifier weights
     classifier.load_state_dict(
         torch.load(MODEL_PATH, map_location=DEVICE)
     )
@@ -48,7 +46,6 @@ def load_models():
     finbert.eval()
     classifier.eval()
 
-    # Visual model (optional, still used for feature extraction)
     visual_model = MobileNetV2FeatureExtractor().to(DEVICE)
     visual_model.eval()
 
@@ -58,7 +55,7 @@ def load_models():
     return tokenizer, finbert, classifier, visual_model, reader
 
 
-# -------------------- PREDICTION FUNCTION --------------------
+#  PREDICTION FUNCTION 
 def predict_sentiment_with_models(
     image_path,
     tokenizer,
@@ -70,20 +67,20 @@ def predict_sentiment_with_models(
 
     with torch.no_grad():
 
-        # -------- IMAGE --------
+        #  IMAGE 
         img = Image.open(image_path).convert("RGB")
         img_tensor = img_transform(img).unsqueeze(0).to(DEVICE)
 
-        visual_features = visual_model(img_tensor)  # Not used in classifier
+        visual_features = visual_model(img_tensor)
 
-        # -------- OCR --------
+        #  OCR
         text_list = reader.readtext(str(image_path), detail=0)
         extracted_text = " ".join(text_list)
 
         if extracted_text.strip() == "":
             extracted_text = "no financial news text detected"
 
-        # -------- TEXT --------
+        #  TEXT 
         enc = tokenizer(
             extracted_text,
             return_tensors="pt",
@@ -107,7 +104,7 @@ def predict_sentiment_with_models(
         return label_map[pred], extracted_text
 
 
-# -------------------- TERMINAL TEST --------------------
+#  TERMINAL TEST 
 if __name__ == "__main__":
 
     tokenizer, finbert, classifier, visual_model, reader = load_models()
